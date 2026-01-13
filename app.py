@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import base64
 from gerador_pdf import criar_orcamento_pdf
+from calculos import calcular_cenario_solar
 
 # --- Configuração Inicial da Página ---
 st.set_page_config(page_title="Orçamentos Inovasol", layout="wide")
@@ -16,57 +16,29 @@ st.markdown("---")
 
 st.sidebar.header("1. Dados do Cliente")
 cliente_nome = st.sidebar.text_input("Nome do Cliente", "Ex: Padaria do João")
-
-st.sidebar.header("2. Consumo e Energia")
-consumo_medio = st.sidebar.number_input(
-    "Consumo Médio (kWh)", min_value=0, value=500, help="Média da conta de luz"
+endereco_cliente = st.sidebar.text_input(
+    "Endereço do cliente", "Ex: Alameda das Castanheiras"
 )
-tarifa_cemig = st.sidebar.number_input(
-    "Tarifa (R$/kWh)", min_value=0.0, value=0.95, format="%.2f"
+cliente_numero = st.sidebar.number_input("Número do cliente", min_value=0, value=355)
+numero_proposta = st.sidebar.number_input("Versão da proposta", min_value=0, value=1)
+ano_proposta = st.sidebar.number_input("Ano da Proposta", min_value=2025, value=2026)
+
+st.sidebar.header("2. Composição da Tarifa")
+icms = st.sidebar.number_input("ICMS (%)", min_value=0.0, value=18.0)
+pis = st.sidebar.number_input("PIS (%)", min_value=0.0, value=0.8)
+cofins = st.sidebar.number_input("COFINS (%)", min_value=0.0, value=3.7)
+fator_simultaneidade = st.sidebar.number_input(
+    "Fator de Simultaniedade", min_value=0.0, max_value=1.0, value=0.38
 )
-
-st.sidebar.header("3. Equipamento (Kit)")
-custo_kit = st.sidebar.number_input(
-    "Custo do Kit PHB (R$)", min_value=0.0, value=12000.00
+custo_fio_b = st.sidebar.number_input("Custo Fio B (R$)", min_value=0.0, value=240.38)
+custo_tusd = st.sidebar.number_input("Custo TUSD (R$/kWh)", min_value=0.0, value=0.4354)
+custo_tusd_impostos = (
+    custo_tusd / (1 - (pis / 100) - (cofins / 100)) / (1 - (icms / 100))
 )
-potencia_kit = st.sidebar.number_input(
-    "Potência do Kit (kWp)", min_value=0.0, value=4.5
-)
-
-# --- NOVIDADE: TABELA DE CUSTOS EXTRAS ---
-st.sidebar.header("4. Custos de Instalação e Extras")
-
-# Custo fixo base (mão de obra padrão, etc)
-custo_base_instalacao = st.sidebar.number_input("Mão de Obra Base (R$)", value=3000.0)
-
-# Lista inicial para a tabela (Exemplo)
-dados_iniciais = [
-    {"Descrição": "Cabos Solares (Extras)", "Valor (R$)": 0.00},
-    {"Descrição": "Estrutura Solo", "Valor (R$)": 0.00},
-    {"Descrição": "Homologação/Projeto", "Valor (R$)": 1500.00},
-]
-
-# Criação do DataFrame (a tabela do Pandas)
-df_custos_extras = pd.DataFrame(dados_iniciais)
-
-# O Expander serve para "esconder" a tabela e não poluir a tela se não for usada
-with st.sidebar.expander("📝 Detalhar Outros Custos (Tabela)", expanded=True):
-    st.write("Adicione ou remova itens de custo:")
-    # O st.data_editor permite ao usuário modificar a tabela na hora!
-    # num_rows="dynamic" permite adicionar linhas novas
-    tabela_editada = st.data_editor(
-        df_custos_extras, num_rows="dynamic", use_container_width=True, hide_index=True
-    )
-
-# SOMA AUTOMÁTICA: O Pandas soma a coluna "Valor (R$)" instantaneamente
-total_extras_tabela = tabela_editada["Valor (R$)"].sum()
-
-# Mostra o subtotal na barra lateral para conferência
-st.sidebar.caption(f"Subtotal Extras: R$ {total_extras_tabela:,.2f}")
-
-# Margem de Lucro
-st.sidebar.markdown("---")
-margem_lucro = st.sidebar.slider("Margem de Lucro (%)", 0, 100, 20)
+st.sidebar.caption(f"Custo TUSD com impostos: R$ {custo_tusd_impostos:.4f} por kWh")
+custo_te = st.sidebar.number_input("Custo TE (R$/kWh)", min_value=0.0, value=0.3136)
+custo_te_impostos = custo_te / (1 - (pis / 100) - (cofins / 100)) / (1 - (icms / 100))
+st.sidebar.caption(f"Custo TE com impostos: R$ {custo_te_impostos:.4f} por kWh")
 
 
 # ==========================================
@@ -74,62 +46,111 @@ margem_lucro = st.sidebar.slider("Margem de Lucro (%)", 0, 100, 20)
 # ==========================================
 
 # 1. Custo Total para a Inovasol (Kit + Mão de Obra + Soma da Tabela)
-custo_total_inovasol = custo_kit + custo_base_instalacao + total_extras_tabela
+# custo_total_inovasol = calculos["custo_total_inovasol"]
 
 # 2. Preço de Venda (Custo + Margem)
-preco_final = custo_total_inovasol * (1 + (margem_lucro / 100))
+# preco_final = calculos["preco_final"]
 
 # 3. Estimativa de Geração (Fórmula padrão solar)
-geracao_estimada = potencia_kit * 5.0 * 30 * 0.80
+# geracao_estimada = calculos["geracao_estimada"]
 
 # 4. Economia Financeira
-economia_mensal = geracao_estimada * tarifa_cemig
+# economia_mensal = calculos["economia_mensal"]
 
-# 5. Payback (Tempo de retorno)
-if economia_mensal > 0:
-    payback_meses = preco_final / economia_mensal
-    payback_anos = payback_meses / 12
-else:
-    payback_anos = 0
-
+# payback = calculos["payback"]
+#
 
 # ==========================================
-# VISUALIZAÇÃO (DASHBOARD)
+# VISUALIZAÇÃO
 # ==========================================
 
-col1, col2, col3 = st.columns(3)
+# --- INÍCIO DO FORMULÁRIO ---
+# O st.form impede que a página recarregue a cada digitação
+with st.form("form_orcamento"):
+    # Criamos 3 Abas para organizar a entrada de dados
+    tab_cliente, tab_tecnico, tab_custos = st.tabs(
+        ["👤 Cliente", "⚡ Técnico", "💰 Custos & Extras"]
+    )
 
-with col1:
-    st.metric("Geração Estimada", f"{geracao_estimada:.0f} kWh/mês")
-    percentual = (geracao_estimada / consumo_medio) * 100 if consumo_medio > 0 else 0
-    st.info(f"Cobertura: {percentual:.1f}% da conta")
+    # --- ABA 1: CLIENTE ---
+    with tab_cliente:
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            cliente_nome = st.text_input(
+                "Nome do Cliente", placeholder="Ex: Mercado Central"
+            )
+        with col_c2:
+            consumo_medio = st.number_input(
+                "Consumo Médio (kWh)", value=500, min_value=0
+            )
+            tarifa_cemig = st.number_input(
+                "Tarifa Energia (R$)", value=0.95, format="%.2f"
+            )
 
-with col2:
-    st.metric("Economia Mensal", f"R$ {economia_mensal:,.2f}")
-    st.metric("Investimento Final", f"R$ {preco_final:,.2f}")
+    # --- ABA 2: TÉCNICO (KIT) ---
+    with tab_tecnico:
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            potencia_kit = st.number_input("Potência do Kit (kWp)", value=4.5)
+        with col_t2:
+            custo_kit = st.number_input("Custo do Kit (R$)", value=12000.00)
 
-with col3:
-    st.metric("Retorno (Payback)", f"{payback_anos:.1f} Anos")
-    if payback_anos < 4:
-        st.success("⚡ Retorno Rápido!")
-    else:
-        st.warning("Retorno Padrão")
+    # --- ABA 3: CUSTOS & EXTRAS (Tabela Editável) ---
+    with tab_custos:
+        st.info("Adicione custos de instalação e itens extras aqui.")
 
-# Gráfico simples
-st.markdown("---")
-st.subheader("Comparativo em 1 Ano")
+        col_custo1, col_custo2 = st.columns(2)
+        with col_custo1:
+            custo_mao_obra = st.number_input("Mão de Obra Base (R$)", value=3000.00)
+            margem_lucro = st.slider("Margem de Lucro (%)", 0, 100, 20)
 
-gasto_sem_solar = consumo_medio * tarifa_cemig * 12
-gasto_com_solar = 0  # Considerando que zerou a conta (exceto taxa mínima)
+        with col_custo2:
+            st.markdown("**Itens Adicionais (Cabos, Projetos, etc):**")
+            # Tabela de extras dentro do formulário
+            df_padrao = pd.DataFrame(
+                [
+                    {"Descrição": "Projeto/Homologação", "Valor": 1500.00},
+                    {"Descrição": "Material Extra", "Valor": 0.00},
+                ]
+            )
+            tabela_extras = st.data_editor(
+                df_padrao, num_rows="dynamic", use_container_width=True, hide_index=True
+            )
 
-dados_grafico = pd.DataFrame(
-    {
-        "Cenário": ["Sem Energia Solar", "Com Inovasol"],
-        "Gasto Acumulado (R$)": [gasto_sem_solar, gasto_com_solar],
-    }
-)
+    st.markdown("---")
+    # Botão principal que submete o formulário e faz os cálculos
+    submit_button = st.form_submit_button("🚀 Calcular Orçamento", type="primary")
 
-st.bar_chart(dados_grafico.set_index("Cenário"))
+
+# --- LÓGICA DE EXIBIÇÃO (Só roda se apertar o botão) ---
+if submit_button:
+    # 1. Somar os extras da tabela
+    total_extras = tabela_extras["Valor"].sum()
+    custo_total_projeto = custo_kit + custo_mao_obra + total_extras
+
+    # 2. Chamar a nossa função de cálculo (do arquivo calculos.py)
+    resultados = calcular_cenario_solar(
+        consumo=consumo_medio,
+        tarifa=tarifa_cemig,
+        potencia_kit=potencia_kit,
+        custo_total=custo_total_projeto,
+        margem=margem_lucro,
+    )
+
+    # Desempacotar resultados para usar fácil
+    preco_final = resultados["preco_final"]
+    geracao = resultados["geracao_estimada"]
+    economia = resultados["economia_mensal"]
+    payback = resultados["payback_anos"]
+
+    # --- MOSTRAR RESULTADOS ---
+    st.subheader("📊 Resultado da Análise")
+
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1.metric("Investimento Final", f"R$ {preco_final:,.2f}")
+    kpi2.metric("Geração Mensal", f"{geracao:.0f} kWh")
+    kpi3.metric("Economia Mensal", f"R$ {economia:,.2f}")
+    kpi4.metric("Payback", f"{payback:.1f} Anos")
 
 
 # ==========================================
