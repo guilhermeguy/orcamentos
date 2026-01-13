@@ -66,56 +66,80 @@ st.sidebar.caption(f"Custo TE com impostos: R$ {custo_te_impostos:.4f} por kWh")
 
 # --- INÍCIO DO FORMULÁRIO ---
 # O st.form impede que a página recarregue a cada digitação
+meses = [
+    "jan",
+    "fev",
+    "mar",
+    "abr",
+    "mai",
+    "jun",
+    "jul",
+    "ago",
+    "set",
+    "out",
+    "nov",
+    "dez",
+]
+dict_consumo = {x: 0 for x in meses}
+dict_geracao = {x: 0 for x in meses}
+
 with st.form("form_orcamento"):
-    # Criamos 3 Abas para organizar a entrada de dados
-    tab_cliente, tab_tecnico, tab_custos = st.tabs(
-        ["👤 Cliente", "⚡ Técnico", "💰 Custos & Extras"]
-    )
+    # Criamos 4 Abas para organizar a entrada de dados
+    tab_cliente, tab_preco = st.tabs(["Dados de Consumo", "Composição do Preço"])
 
-    # --- ABA 1: CLIENTE ---
+    # --- ABA 1: DADOS DE CONSUMO ---
     with tab_cliente:
-        col_c1, col_c2 = st.columns(2)
+        col_c1, col_c2, col_c3, col_c4 = st.columns(4)
         with col_c1:
-            cliente_nome = st.text_input(
-                "Nome do Cliente", placeholder="Ex: Mercado Central"
-            )
-        with col_c2:
-            consumo_medio = st.number_input(
-                "Consumo Médio (kWh)", value=500, min_value=0
-            )
-            tarifa_cemig = st.number_input(
-                "Tarifa Energia (R$)", value=0.95, format="%.2f"
+            st.markdown("### Imóvel 1")
+            for mes in dict_consumo:
+                dict_consumo[mes] = st.number_input(
+                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel1'"
+                )
+            st.markdown("---")
+            st.number_input(
+                "Custo de disponibilidade", min_value=0, value=0, key="imovel1_dispo"
             )
 
-    # --- ABA 2: TÉCNICO (KIT) ---
-    with tab_tecnico:
-        col_t1, col_t2 = st.columns(2)
+        with col_c2:
+            st.markdown("### Imóvel 2")
+            for mes in dict_consumo:
+                dict_consumo[mes] = st.number_input(
+                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel2'"
+                )
+            st.markdown("---")
+            st.number_input(
+                "Custo de disponibilidade", min_value=0, value=0, key="imovel2_dispo"
+            )
+        with col_c3:
+            st.markdown("### Imóvel 3")
+            for mes in dict_consumo:
+                dict_consumo[mes] = st.number_input(
+                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel3'"
+                )
+            st.markdown("---")
+            st.number_input(
+                "Custo de disponibilidade", min_value=0, value=0, key="imovel3_dispo"
+            )
+        with col_c4:
+            st.markdown("### Imóvel 4")
+            for mes in dict_consumo:
+                dict_consumo[mes] = st.number_input(
+                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel4'"
+                )
+            st.markdown("---")
+            st.number_input(
+                "Custo de disponibilidade", min_value=0, value=0, key="imovel4_dispo"
+            )
+
+    # --- ABA 2: (Composição do Preço) ---
+    #
+    with tab_preco:
+        col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
             potencia_kit = st.number_input("Potência do Kit (kWp)", value=4.5)
         with col_t2:
             custo_kit = st.number_input("Custo do Kit (R$)", value=12000.00)
-
-    # --- ABA 3: CUSTOS & EXTRAS (Tabela Editável) ---
-    with tab_custos:
-        st.info("Adicione custos de instalação e itens extras aqui.")
-
-        col_custo1, col_custo2 = st.columns(2)
-        with col_custo1:
-            custo_mao_obra = st.number_input("Mão de Obra Base (R$)", value=3000.00)
-            margem_lucro = st.slider("Margem de Lucro (%)", 0, 100, 20)
-
-        with col_custo2:
-            st.markdown("**Itens Adicionais (Cabos, Projetos, etc):**")
-            # Tabela de extras dentro do formulário
-            df_padrao = pd.DataFrame(
-                [
-                    {"Descrição": "Projeto/Homologação", "Valor": 1500.00},
-                    {"Descrição": "Material Extra", "Valor": 0.00},
-                ]
-            )
-            tabela_extras = st.data_editor(
-                df_padrao, num_rows="dynamic", use_container_width=True, hide_index=True
-            )
 
     st.markdown("---")
     # Botão principal que submete o formulário e faz os cálculos
