@@ -1,8 +1,9 @@
+from numpy import require
 import streamlit as st
 import pandas as pd
 import base64
 from gerador_pdf import criar_orcamento_pdf
-from calculos import calcular_cenario_solar
+import calculos
 
 # --- Configuração Inicial da Página ---
 st.set_page_config(page_title="Orçamentos Inovasol", layout="wide")
@@ -80,57 +81,50 @@ meses = [
     "nov",
     "dez",
 ]
-dict_consumo = {x: 0 for x in meses}
+imoveis = [
+    "imv1",
+    "imv2",
+    "imv3",
+    "imv4",
+]
+dict_consumo = {(x, imv): 0 for x in meses for imv in imoveis}
 dict_geracao = {x: 0 for x in meses}
 
 with st.form("form_orcamento"):
     # Criamos 4 Abas para organizar a entrada de dados
-    tab_cliente, tab_preco = st.tabs(["Dados de Consumo", "Composição do Preço"])
+    tab_cliente, tab_preco, tab_infos = st.tabs(
+        ["Dados de Consumo", "Composição do Preço", "Informações adicionais"]
+    )
 
     # --- ABA 1: DADOS DE CONSUMO ---
     with tab_cliente:
-        col_c1, col_c2, col_c3, col_c4 = st.columns(4)
-        with col_c1:
-            st.markdown("### Imóvel 1")
-            for mes in dict_consumo:
-                dict_consumo[mes] = st.number_input(
-                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel1'"
-                )
-            st.markdown("---")
-            st.number_input(
-                "Custo de disponibilidade", min_value=0, value=0, key="imovel1_dispo"
-            )
+        st.subheader("Consumo Mensal (kWh)")
 
-        with col_c2:
-            st.markdown("### Imóvel 2")
-            for mes in dict_consumo:
-                dict_consumo[mes] = st.number_input(
-                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel2'"
-                )
-            st.markdown("---")
-            st.number_input(
-                "Custo de disponibilidade", min_value=0, value=0, key="imovel2_dispo"
-            )
-        with col_c3:
-            st.markdown("### Imóvel 3")
-            for mes in dict_consumo:
-                dict_consumo[mes] = st.number_input(
-                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel3'"
-                )
-            st.markdown("---")
-            st.number_input(
-                "Custo de disponibilidade", min_value=0, value=0, key="imovel3_dispo"
-            )
-        with col_c4:
-            st.markdown("### Imóvel 4")
-            for mes in dict_consumo:
-                dict_consumo[mes] = st.number_input(
-                    f"{mes.title()}", min_value=0, value=0, key=f"{mes}+'imovel4'"
-                )
-            st.markdown("---")
-            st.number_input(
-                "Custo de disponibilidade", min_value=0, value=0, key="imovel4_dispo"
-            )
+        # 1. Criamos um DataFrame pandas para servir de base
+        # As linhas são os meses, as colunas são os imóveis
+        df_inicial = pd.DataFrame(0, index=meses, columns=imoveis)
+
+        # 2. Exibimos a tabela editável
+        df_consumos = st.data_editor(
+            df_inicial,
+            use_container_width=True,
+            height=460,  # Altura suficiente para ver o ano todo sem rolar
+            column_config={
+                "Imóvel 1": st.column_config.NumberColumn(required=True, min_value=0),
+                "Imóvel 2": st.column_config.NumberColumn(required=True, min_value=0),
+                "Imóvel 3": st.column_config.NumberColumn(required=True, min_value=0),
+                "Imóvel 4": st.column_config.NumberColumn(required=True, min_value=0),
+            },
+        )
+    st.markdown("---")
+    st.markdown("**Custo de Disponibilidade (Taxa Mínima):**")
+    col_d1, col_d2, col_d3, col_d4 = st.columns(4)
+
+    # Exemplo manual ou poderia ser outra tabela pequena
+    disp_imv1 = col_d1.number_input("Disp. Imv 1", min_value=0, value=50)
+    disp_imv2 = col_d2.number_input("Disp. Imv 2", min_value=0, value=0)
+    disp_imv3 = col_d3.number_input("Disp. Imv 3", min_value=0, value=0)
+    disp_imv4 = col_d4.number_input("Disp. Imv 4", min_value=0, value=0)
 
     # --- ABA 2: (Composição do Preço) ---
     #
@@ -138,9 +132,87 @@ with st.form("form_orcamento"):
         col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
             potencia_kit = st.number_input("Potência do Kit (kWp)", value=4.5)
+            ganho_perda = st.number_input(
+                "Ganho ou perda em relacao ao plano horizontal (%)", value=0
+            )
         with col_t2:
             custo_kit = st.number_input("Custo do Kit (R$)", value=12000.00)
-
+        with col_t3:
+            adicional_projeto = st.number_input(
+                "Adicional de valor de projeto (%)", value=0, step=5
+            )
+            st.caption("Valor do projeto calculado de acordo com a tabela de valores.")
+        st.markdown("---")
+        df_preco = pd.DataFrame(
+            [
+                {"Descr": "Mao de obra", "Qtd": 1, "Valor Unit (R$)": 1000.00},
+                {"Descr": "ART", "Qtd": 1, "Valor Unit (R$)": 100.00},
+                {"Descr": "Combustível", "Qtd": 1.0, "Valor Unit (R$)": 1.50},
+                {"Descr": "Aluguel de Veículo", "Qtd": 1, "Valor Unit (R$)": 250.00},
+                {
+                    "Descr": "Equipamentos Adicionais",
+                    "Qtd": 1,
+                    "Valor Unit (R$)": 100.00,
+                },
+            ]
+        )
+        tabela_preco = st.data_editor(
+            df_preco,
+            column_config={
+                "Descr": st.column_config.TextColumn(
+                    "Descrição", width="medium", required=True
+                ),
+                "Qtd:": st.column_config.NumberColumn(
+                    "Qtd",
+                    min_value=0.0,
+                    format="%f",
+                    required=True,
+                    step=0.1,
+                    default=1.0,
+                ),
+                "Valor Unit (R$)": st.column_config.NumberColumn(
+                    "Valor Unit. (R$)", min_value=0.0, format="R$ %.2f"
+                ),
+            },
+            num_rows="dynamic",
+            use_container_width=True,
+            hide_index=True,
+        )
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            comissao = st.slider(
+                "Comissao de venda (%)", min_value=0, max_value=15, value=5, step=1
+            )
+        with col_a2:
+            lucro_inovasol = st.slider(
+                "Lucro Inovasol (%)", min_value=0, max_value=100, step=5, value=30
+            )
+    with tab_infos:
+        df_projeto = pd.DataFrame(
+            [
+                {"de": 0, "ate": 5, "preco (R$)": 1080.00, "Potencia": "0 a 5 kWp"},
+                {"de": 5, "ate": 10, "preco (R$)": 1180.00, "Potencia": "5 a 10 kWp"},
+                {"de": 10, "ate": 20, "preco (R$)": 1650.00, "Potencia": "10 a 20 kWp"},
+                {"de": 20, "ate": 30, "preco (R$)": 2650.00, "Potencia": "20 a 30 kWp"},
+                {"de": 30, "ate": 40, "preco (R$)": 3650.00, "Potencia": "30 a 40 kWp"},
+                {"de": 40, "ate": 50, "preco (R$)": 4650.00, "Potencia": "40 a 50 kWp"},
+                {"de": 50, "ate": 60, "preco (R$)": 5650.00, "Potencia": "50 a 60 kWp"},
+                {"de": 60, "ate": 70, "preco (R$)": 6650.00, "Potencia": "60 a 70 kWp"},
+                {"de": 70, "ate": 80, "preco (R$)": 7650.00, "Potencia": "70 a 80 kWp"},
+                {"de": 80, "ate": 90, "preco (R$)": 8650.00, "Potencia": "80 a 90 kWp"},
+                {
+                    "de": 90,
+                    "ate": 100,
+                    "preco (R$)": 9650.00,
+                    "Potencia": "90 a 100 kWp",
+                },
+            ]
+        )
+        st.dataframe(
+            df_projeto,
+            use_container_width=False,
+            hide_index=True,
+        )
     st.markdown("---")
     # Botão principal que submete o formulário e faz os cálculos
     submit_button = st.form_submit_button("🚀 Calcular Orçamento", type="primary")
@@ -148,31 +220,20 @@ with st.form("form_orcamento"):
 
 # --- LÓGICA DE EXIBIÇÃO (Só roda se apertar o botão) ---
 if submit_button:
-    # 1. Somar os extras da tabela
-    total_extras = tabela_extras["Valor"].sum()
-    custo_total_projeto = custo_kit + custo_mao_obra + total_extras
-
-    # 2. Chamar a nossa função de cálculo (do arquivo calculos.py)
-    resultados = calcular_cenario_solar(
-        consumo=consumo_medio,
-        tarifa=tarifa_cemig,
-        potencia_kit=potencia_kit,
-        custo_total=custo_total_projeto,
-        margem=margem_lucro,
-    )
-
-    # Desempacotar resultados para usar fácil
-    preco_final = resultados["preco_final"]
-    geracao = resultados["geracao_estimada"]
-    economia = resultados["economia_mensal"]
-    payback = resultados["payback_anos"]
-
+    dict_disponibilidade = {
+        "disp_imv1": disp_imv1,
+        "disp_imv2": disp_imv2,
+        "disp_imv3": disp_imv3,
+        "disp_imv4": disp_imv4,
+    }
+    consumo_mensal = calculos.consumo_medio(df_consumos, dict_disponibilidade)
+    geracao_mensal = calculos.geracao_mensal(potencia_kit, ganho_perda)
     # --- MOSTRAR RESULTADOS ---
     st.subheader("📊 Resultado da Análise")
 
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    kpi1.metric("Investimento Final", f"R$ {preco_final:,.2f}")
-    kpi2.metric("Geração Mensal", f"{geracao:.0f} kWh")
+    kpi1.metric("Consumo médio total", f"R$ {consumo_mensal} kWh")
+    kpi2.metric("Geração Mensal", f"{geracao_mensal} kWh")
     kpi3.metric("Economia Mensal", f"R$ {economia:,.2f}")
     kpi4.metric("Payback", f"{payback:.1f} Anos")
 

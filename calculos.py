@@ -5,11 +5,9 @@ import math
 import pandas as pd
 
 
-def calcular_cenario_solar():
-    resultados = calcular_cenario_solar(
-        consumo=consumo_medio,
-        tarifa=tarifa_cemig,
-        potencia_kit=potencia_kit,
-        custo_total=custo_total_projeto,
-        margem=margem_lucro,
-    )
+def consumo_medio(df_consumo, dict_disponibilidades):
+    pass
+
+
+def geracao_mensal(potencia_kit, ganho_perda):
+    pass
