@@ -99,6 +99,7 @@ with st.form("form_orcamento"):
     # --- ABA 1: DADOS DE CONSUMO ---
     with tab_cliente:
         st.subheader("Consumo Mensal (kWh)")
+        st.caption("Inserir o imóvel com gerador no Imóvel 1!")
 
         # 1. Criamos um DataFrame pandas para servir de base
         # As linhas são os meses, as colunas são os imóveis
