@@ -57,7 +57,7 @@ def custo_total(dict_custos: dict) -> dict:
     sub_total = df_preco["valor_total"].sum() + custo_proj
     lucro_inovasol = (dict_custos["lucro_inovasol"] / 100) * sub_total
     comissao = (dict_custos["comissao"] / 100) * sub_total
-    valor_impostos = dict_return["df_impostos"]["Valor"].sum() / 100
+    valor_impostos = dict_custos["df_impostos"]["Valor"].sum() / 100
     dict_return["total_nf"] = (sub_total + lucro_inovasol + comissao) / (
         1 - valor_impostos
     )

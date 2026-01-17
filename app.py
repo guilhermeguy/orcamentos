@@ -309,12 +309,22 @@ if submit_button:
     st.subheader("📊 Resultado da Análise")
 
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    kpi1.metric("Consumo médio total", f"R$ {consumo_mensal} kWh")
-    kpi2.metric("Geração Mensal", f"{geracao_mensal} kWh")
+    kpi1.metric("Consumo médio total", f"{consumo_mensal:.0f} kWh")
+    kpi2.metric("Geração Mensal", f"{geracao_mensal:.0f} kWh")
     kpi3.metric("Valor NF", f"R$ {dict_calc_custos['total_nf']:,.2f}")
     kpi4.metric("Custo Total do Projeto", f"R$ {dict_calc_custos['total_projeto']:.2f}")
 
-
+    custo_wp, custo_wp_inovasol, custo_wp_equip = st.columns(3)
+    custo_wp.metric(
+        "Custo por Wp", f"R$ {dict_calc_custos['total_projeto'] / potencia_kit:.2f}"
+    )
+    custo_wp_inovasol.metric(
+        "Custo por WP Inovasol", f"R$ {dict_calc_custos['total_nf'] / potencia_kit:.2f}"
+    )
+    custo_wp_equip.metric(
+        "Custo por Wp Equipamentos",
+        f"R$ {custo_kit / potencia_kit:.2f}",
+    )
 # ==========================================
 # GERAÇÃO DO PDF
 # ==========================================
