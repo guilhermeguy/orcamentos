@@ -45,24 +45,17 @@ def custo_projeto(
     return (1 + adicional_projeto / 100) * preco_projeto
 
 
-def custo_total(dict_custos: dict) -> dict:
-    dict_return = {}
+def custo_total(dict_custos: dict):
+    df_preco = dict_custos["df_preco"]
+    df_preco["valor_total"] = df_preco["Qtd"] * df_preco["Valor Unit (R$)"]
+    sub_total = df_preco["valor_total"].sum()
+    lucro_inovasol = (dict_custos["lucro_inovasol"] / 100) * sub_total
+    comissao = (dict_custos["comissao"] / 100) * sub_total
     custo_proj = custo_projeto(
         dict_custos["potencia_kit"],
         dict_custos["df_projeto"],
         dict_custos["adicional_projeto"],
     )
-    df_preco = dict_custos["df_preco"]
-    df_preco["valor_total"] = df_preco["Qtd"] * df_preco["Valor Unit (R$)"]
-    sub_total = df_preco["valor_total"].sum() + custo_proj
-    lucro_inovasol = (dict_custos["lucro_inovasol"] / 100) * sub_total
-    comissao = (dict_custos["comissao"] / 100) * sub_total
-    valor_impostos = dict_return["df_impostos"]["Valor"].sum() / 100
-    dict_return["total_nf"] = (sub_total + lucro_inovasol + comissao) / (
-        1 - valor_impostos
-    )
-    dict_return["total_projeto"] = dict_return["total_nf"] + dict_custos["custo_kit"]
-    return dict_return
 
 
 if __name__ == "__main__":

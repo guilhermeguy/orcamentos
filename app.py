@@ -43,25 +43,6 @@ st.sidebar.caption(f"Custo TE com impostos: R$ {custo_te_impostos:.4f} por kWh")
 
 
 # ==========================================
-# CÁLCULOS (O MOTOR DO SISTEMA)
-# ==========================================
-
-# 1. Custo Total para a Inovasol (Kit + Mão de Obra + Soma da Tabela)
-# custo_total_inovasol = calculos["custo_total_inovasol"]
-
-# 2. Preço de Venda (Custo + Margem)
-# preco_final = calculos["preco_final"]
-
-# 3. Estimativa de Geração (Fórmula padrão solar)
-# geracao_estimada = calculos["geracao_estimada"]
-
-# 4. Economia Financeira
-# economia_mensal = calculos["economia_mensal"]
-
-# payback = calculos["payback"]
-#
-
-# ==========================================
 # VISUALIZAÇÃO
 # ==========================================
 
@@ -117,15 +98,15 @@ with st.form("form_orcamento"):
                 "Imóvel 4": st.column_config.NumberColumn(required=True, min_value=0),
             },
         )
-    st.markdown("---")
-    st.markdown("**Custo de Disponibilidade (Taxa Mínima):**")
-    col_d1, col_d2, col_d3, col_d4 = st.columns(4)
+        st.markdown("---")
+        st.markdown("**Custo de Disponibilidade (Taxa Mínima):**")
+        col_d1, col_d2, col_d3, col_d4 = st.columns(4)
 
-    # Exemplo manual ou poderia ser outra tabela pequena
-    disp_imv1 = col_d1.number_input("Disp. Imv 1", min_value=0, value=50)
-    disp_imv2 = col_d2.number_input("Disp. Imv 2", min_value=0, value=0)
-    disp_imv3 = col_d3.number_input("Disp. Imv 3", min_value=0, value=0)
-    disp_imv4 = col_d4.number_input("Disp. Imv 4", min_value=0, value=0)
+        # Exemplo manual ou poderia ser outra tabela pequena
+        disp_imv1 = col_d1.number_input("Disp. Imv 1", min_value=0, value=50)
+        disp_imv2 = col_d2.number_input("Disp. Imv 2", min_value=0, value=0)
+        disp_imv3 = col_d3.number_input("Disp. Imv 3", min_value=0, value=0)
+        disp_imv4 = col_d4.number_input("Disp. Imv 4", min_value=0, value=0)
 
     # --- ABA 2: (Composição do Preço) ---
     #
@@ -189,31 +170,110 @@ with st.form("form_orcamento"):
                 "Lucro Inovasol (%)", min_value=0, max_value=100, step=5, value=30
             )
     with tab_infos:
-        df_projeto = pd.DataFrame(
-            [
-                {"de": 0, "ate": 5, "preco (R$)": 1080.00, "Potencia": "0 a 5 kWp"},
-                {"de": 5, "ate": 10, "preco (R$)": 1180.00, "Potencia": "5 a 10 kWp"},
-                {"de": 10, "ate": 20, "preco (R$)": 1650.00, "Potencia": "10 a 20 kWp"},
-                {"de": 20, "ate": 30, "preco (R$)": 2650.00, "Potencia": "20 a 30 kWp"},
-                {"de": 30, "ate": 40, "preco (R$)": 3650.00, "Potencia": "30 a 40 kWp"},
-                {"de": 40, "ate": 50, "preco (R$)": 4650.00, "Potencia": "40 a 50 kWp"},
-                {"de": 50, "ate": 60, "preco (R$)": 5650.00, "Potencia": "50 a 60 kWp"},
-                {"de": 60, "ate": 70, "preco (R$)": 6650.00, "Potencia": "60 a 70 kWp"},
-                {"de": 70, "ate": 80, "preco (R$)": 7650.00, "Potencia": "70 a 80 kWp"},
-                {"de": 80, "ate": 90, "preco (R$)": 8650.00, "Potencia": "80 a 90 kWp"},
-                {
-                    "de": 90,
-                    "ate": 100,
-                    "preco (R$)": 9650.00,
-                    "Potencia": "90 a 100 kWp",
-                },
-            ]
-        )
-        st.dataframe(
-            df_projeto,
-            use_container_width=False,
-            hide_index=True,
-        )
+        col_i1, col_i2 = st.columns(2)
+        with col_i1:
+            df_projeto = pd.DataFrame(
+                [
+                    {"de": 0, "ate": 5, "preco (R$)": 1080.00, "Potencia": "0 a 5 kWp"},
+                    {
+                        "de": 5,
+                        "ate": 10,
+                        "preco (R$)": 1180.00,
+                        "Potencia": "5 a 10 kWp",
+                    },
+                    {
+                        "de": 10,
+                        "ate": 20,
+                        "preco (R$)": 1650.00,
+                        "Potencia": "10 a 20 kWp",
+                    },
+                    {
+                        "de": 20,
+                        "ate": 30,
+                        "preco (R$)": 2650.00,
+                        "Potencia": "20 a 30 kWp",
+                    },
+                    {
+                        "de": 30,
+                        "ate": 40,
+                        "preco (R$)": 3650.00,
+                        "Potencia": "30 a 40 kWp",
+                    },
+                    {
+                        "de": 40,
+                        "ate": 50,
+                        "preco (R$)": 4650.00,
+                        "Potencia": "40 a 50 kWp",
+                    },
+                    {
+                        "de": 50,
+                        "ate": 60,
+                        "preco (R$)": 5650.00,
+                        "Potencia": "50 a 60 kWp",
+                    },
+                    {
+                        "de": 60,
+                        "ate": 70,
+                        "preco (R$)": 6650.00,
+                        "Potencia": "60 a 70 kWp",
+                    },
+                    {
+                        "de": 70,
+                        "ate": 80,
+                        "preco (R$)": 7650.00,
+                        "Potencia": "70 a 80 kWp",
+                    },
+                    {
+                        "de": 80,
+                        "ate": 90,
+                        "preco (R$)": 8650.00,
+                        "Potencia": "80 a 90 kWp",
+                    },
+                    {
+                        "de": 90,
+                        "ate": 100,
+                        "preco (R$)": 9650.00,
+                        "Potencia": "90 a 100 kWp",
+                    },
+                ]
+            )
+            st.dataframe(
+                df_projeto,
+                use_container_width=True,
+                hide_index=True,
+                height=420,
+            )
+        with col_i2:
+            df_nf = pd.DataFrame(
+                [
+                    {"descricao": "Custos Inovasol", "Valor (R$)": 0.0},
+                    {"descricao": "Lucro Inovasol", "Valor (R$)": 0.0},
+                    {"descricao": "Comissao do vendedor", "Valor (R$)": 0.0},
+                    {"descricao": "Total impostos", "Valor (R$)": 0.0},
+                ]
+            )
+            st.dataframe(
+                df_nf,
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.caption(f"Total da Nota Fiscal: R$ {df_nf['Valor (R$)'].sum()}")
+            df_impostos = pd.DataFrame(
+                [
+                    {"imposto": "ISS", "Valor": 6.0},
+                    {"imposto": "PIS", "Valor": 0.0},
+                    {"imposto": "COFINS", "Valor": 0.0},
+                    {"imposto": "CSLL", "Valor": 0.0},
+                    {"imposto": "IRPF", "Valor": 0.0},
+                ]
+            )
+            st.dataframe(
+                df_impostos,
+                use_container_width=True,
+                hide_index=True,
+                column_config={"Valor": st.column_config.NumberColumn(format="%.1f%%")},
+            )
+            st.caption(f"Total dos impostos: {df_impostos['Valor'].sum()}%")
     st.markdown("---")
     # Botão principal que submete o formulário e faz os cálculos
     submit_button = st.form_submit_button("🚀 Calcular Orçamento", type="primary")
@@ -227,16 +287,32 @@ if submit_button:
         "disp_imv3": disp_imv3,
         "disp_imv4": disp_imv4,
     }
+
+    dict_custos = {
+        "df_preco": df_preco,
+        "lucro_inovasol": lucro_inovasol,
+        "comissao": comissao,
+        "potencia_kit": potencia_kit,
+        "df_projeto": df_projeto,
+        "adicional_projeto": adicional_projeto,
+        "df_impostos": df_impostos,
+        "custo_kit": custo_kit,
+    }
+
     consumo_mensal = calculos.consumo_medio(df_consumos, dict_disponibilidade)
-    geracao_mensal = calculos.geracao_mensal(potencia_kit, ganho_perda)
+    geracao_mensal = calculos.geracao_mensal(
+        potencia_kit, ganho_perda, potencia_referencia=7.8
+    )
+
+    dict_calc_custos = calculos.custo_total(dict_custos=dict_custos)
     # --- MOSTRAR RESULTADOS ---
     st.subheader("📊 Resultado da Análise")
 
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     kpi1.metric("Consumo médio total", f"R$ {consumo_mensal} kWh")
     kpi2.metric("Geração Mensal", f"{geracao_mensal} kWh")
-    kpi3.metric("Economia Mensal", f"R$ {economia:,.2f}")
-    kpi4.metric("Payback", f"{payback:.1f} Anos")
+    kpi3.metric("Valor NF", f"R$ {dict_calc_custos['total_nf']:,.2f}")
+    kpi4.metric("Custo Total do Projeto", f"R$ {dict_calc_custos['total_projeto']:.2f}")
 
 
 # ==========================================
