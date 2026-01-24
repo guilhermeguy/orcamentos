@@ -65,6 +65,11 @@ def custo_total(dict_custos: dict) -> dict:
     return dict_return
 
 
+def retorno_financeiro(dict_custos: dict, tma: float, prazo_vpl: int) -> dict:
+    dict_retorno = {}
+    return dict_retorno
+
+
 if __name__ == "__main__":
     print(
         "Geracao mensal para kit de 4 kWp, 5 % de perda e 7,8 kwp de potencia de referencia: "

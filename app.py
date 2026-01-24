@@ -114,11 +114,15 @@ with st.form("form_orcamento"):
         col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
             potencia_kit = st.number_input("Potência do Kit (kWp)", value=4.5)
-            ganho_perda = st.number_input(
-                "Ganho ou perda em relacao ao plano horizontal (%)", value=0
+            potencia_modulos = st.number_input("Potência dos módulos (Wp)", value=620)
+            tipo_estrutura = st.selectbox(
+                "Tipo de Estrutura", ["Telhado", "Solo", "Laje"], index=0
             )
         with col_t2:
             custo_kit = st.number_input("Custo do Kit (R$)", value=12000.00)
+            ganho_perda = st.number_input(
+                "Ganho ou perda em relacao ao plano horizontal (%)", value=0
+            )
         with col_t3:
             adicional_projeto = st.number_input(
                 "Adicional de valor de projeto (%)", value=0, step=5
@@ -278,7 +282,7 @@ with st.form("form_orcamento"):
     # Botão principal que submete o formulário e faz os cálculos
     submit_button = st.form_submit_button("🚀 Calcular Orçamento", type="primary")
 
-
+ran_calculations = False
 # --- LÓGICA DE EXIBIÇÃO (Só roda se apertar o botão) ---
 if submit_button:
     dict_disponibilidade = {
@@ -303,6 +307,16 @@ if submit_button:
     geracao_mensal = calculos.geracao_mensal(
         potencia_kit, ganho_perda, potencia_referencia=7.8
     )
+    n_modulos = round((potencia_kit * 1000) / potencia_modulos, 0)
+    if tipo_estrutura == "Telhado":
+        area_painel = n_modulos * 7
+    elif tipo_estrutura == "Laje":
+        area_painel = n_modulos * 9
+    elif tipo_estrutura == "Solo":
+        area_painel = n_modulos * 10
+    else:
+        print("Estrutura inválida.")
+        area_painel = 0
 
     dict_calc_custos = calculos.custo_total(dict_custos=dict_custos)
     # --- MOSTRAR RESULTADOS ---
@@ -314,7 +328,8 @@ if submit_button:
     kpi3.metric("Valor NF", f"R$ {dict_calc_custos['total_nf']:,.2f}")
     kpi4.metric("Custo Total do Projeto", f"R$ {dict_calc_custos['total_projeto']:.2f}")
 
-    custo_wp, custo_wp_inovasol, custo_wp_equip = st.columns(3)
+    area_ocupada_painel, custo_wp, custo_wp_inovasol, custo_wp_equip = st.columns(4)
+    area_ocupada_painel.metric("Área ocupada pelo painel", f"{area_painel:.0f} m²")
     custo_wp.metric(
         "Custo por Wp", f"R$ {dict_calc_custos['total_projeto'] / potencia_kit:.2f}"
     )
@@ -325,40 +340,40 @@ if submit_button:
         "Custo por Wp Equipamentos",
         f"R$ {custo_kit / potencia_kit:.2f}",
     )
+    ran_calculations = True
+
+
 # ==========================================
 # GERAÇÃO DO PDF
 # ==========================================
 
 # Prepara os dados para enviar ao gerador_pdf.py
-dados_cliente = {"nome": cliente_nome}
+if ran_calculations:
+    dados_cliente = {"nome": cliente_nome}
 
-# Convertemos a tabela editada para uma lista de dicionários para facilitar no PDF
-# Ex: [{'Descrição': 'Cabos', 'Valor (R$)': 50}, ...]
-lista_itens_extras = tabela_editada.to_dict("records")
+    dados_financeiros = {
+        "kit": custo_kit,
+        "custo_projeto": dict_calc_custos.get("total_projeto", 0),
+        "lista_extras": lista_itens_extras,  # Enviamos a lista detalhada
+        "total_extras": total_extras_tabela,  # Enviamos a soma
+        "total_final": preco_final,
+        "economia": economia_mensal,
+        "payback": payback_anos,
+    }
 
-dados_financeiros = {
-    "kit": custo_kit,
-    "instalacao_base": custo_base_instalacao,
-    "lista_extras": lista_itens_extras,  # Enviamos a lista detalhada
-    "total_extras": total_extras_tabela,  # Enviamos a soma
-    "total_final": preco_final,
-    "economia": economia_mensal,
-    "payback": payback_anos,
-}
+    st.subheader("Emitir Proposta")
 
-st.subheader("Emitir Proposta")
+    if st.button("📄 Gerar PDF da Proposta", type="primary"):
+        try:
+            # Chama a função mágica do outro arquivo
+            pdf_bytes = criar_orcamento_pdf(dados_cliente, dados_financeiros)
 
-if st.button("📄 Gerar PDF da Proposta", type="primary"):
-    try:
-        # Chama a função mágica do outro arquivo
-        pdf_bytes = criar_orcamento_pdf(dados_cliente, dados_financeiros)
+            # Cria o link de download
+            b64 = base64.b64encode(pdf_bytes).decode()
+            href = f'<a href="data:application/octet-stream;base64,{b64}" download="Orcamento_{cliente_nome}.pdf">📥 Clique aqui para baixar o PDF</a>'
 
-        # Cria o link de download
-        b64 = base64.b64encode(pdf_bytes).decode()
-        href = f'<a href="data:application/octet-stream;base64,{b64}" download="Orcamento_{cliente_nome}.pdf">📥 Clique aqui para baixar o PDF</a>'
+            st.success("PDF Gerado com sucesso!")
+            st.markdown(href, unsafe_allow_html=True)
 
-        st.success("PDF Gerado com sucesso!")
-        st.markdown(href, unsafe_allow_html=True)
-
-    except Exception as e:
-        st.error(f"Erro ao gerar PDF: {e}")
+        except Exception as e:
+            st.error(f"Erro ao gerar PDF: {e}")
