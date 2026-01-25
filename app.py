@@ -1,14 +1,26 @@
-from numpy import require
 import streamlit as st
 import pandas as pd
 import base64
-from gerador_pdf import criar_orcamento_pdf
+from gerador_pdf import criar_pdf
+from pathlib import Path
 import calculos
 
-# --- Configuração Inicial da Página ---
-st.set_page_config(page_title="Orçamentos Inovasol", layout="wide")
 
-st.title("☀️ Gerador de Orçamentos - Inovasol")
+# Paths importantes
+
+PATH_LOGO_INOVASOL = Path(
+    "/home/guilherme/projetos/orcamentos/images/Logotipo_Inovasol.png"
+)
+
+
+# --- Configuração Inicial da Página ---
+
+st.set_page_config(page_title="Orçamentos Inovasol", layout="wide")
+col_image, col_title = st.columns(spec=[0.15, 0.85])
+with col_image:
+    st.image(PATH_LOGO_INOVASOL, width=150)
+with col_title:
+    st.title("Gerador de Orçamentos - Inovasol")
 st.markdown("---")
 
 # ==========================================
@@ -282,7 +294,10 @@ with st.form("form_orcamento"):
     # Botão principal que submete o formulário e faz os cálculos
     submit_button = st.form_submit_button("🚀 Calcular Orçamento", type="primary")
 
+# Inicializando variáveis
+dict_calc_custos = dict()
 ran_calculations = False
+area_painel = 0
 # --- LÓGICA DE EXIBIÇÃO (Só roda se apertar o botão) ---
 if submit_button:
     dict_disponibilidade = {
@@ -349,31 +364,40 @@ if submit_button:
 
 # Prepara os dados para enviar ao gerador_pdf.py
 if ran_calculations:
-    dados_cliente = {"nome": cliente_nome}
-
-    dados_financeiros = {
-        "kit": custo_kit,
-        "custo_projeto": dict_calc_custos.get("total_projeto", 0),
-        "lista_extras": lista_itens_extras,  # Enviamos a lista detalhada
-        "total_extras": total_extras_tabela,  # Enviamos a soma
-        "total_final": preco_final,
-        "economia": economia_mensal,
-        "payback": payback_anos,
+    dados_projeto = {
+        # Dados Pessoais
+        "nome_cliente": cliente_nome,
+        "cidade": endereco_cliente,  # Corrigido de 'cidade_cliente' para 'cidade' conforme gerador_pdf
+        "numero_proposta": f"{numero_proposta}/{ano_proposta}",
+        "data": "25 de Janeiro de 2026",  # Podes usar datetime.now().strftime...
+        # Dados Técnicos (Estes devem vir das tuas variáveis de cálculo)
+        "potencia_kwp": f"{potencia_kit:.2f}",
+        "num_modulos": 10,  # Exemplo: substituir pela variável real
+        "inversor": "Inversor X",  # Exemplo
+        "geracao_mensal": "500",  # Exemplo
+        "area_minima": "25",  # Exemplo
+        # Financeiro
+        "valor_total": f"{dict_calc_custos['total_nf']:,.2f}",
+        "payback": "4.5 Anos",
+        "economia_anual": "R$ 5.000,00",  # Exemplo
+        "nova_conta": "R$ 100,00",  # Exemplo
+        "tir": "2.5%",  # Exemplo
     }
+    pdf_bytes = None
+    graficos = {}
+    try:  # Passamos graficos=None por enquanto, como no teu código original
+        pdf_bytes = criar_pdf(dados=dados_projeto, graficos=graficos)
+    except Exception as e:
+        st.error(f"Erro ao gerar o PDF: {e}")
+        # Dica de debug: imprime o erro completo no terminal
+        print(f"ERRO DETALHADO: {e}")
 
-    st.subheader("Emitir Proposta")
-
-    if st.button("📄 Gerar PDF da Proposta", type="primary"):
-        try:
-            # Chama a função mágica do outro arquivo
-            pdf_bytes = criar_orcamento_pdf(dados_cliente, dados_financeiros)
-
-            # Cria o link de download
-            b64 = base64.b64encode(pdf_bytes).decode()
-            href = f'<a href="data:application/octet-stream;base64,{b64}" download="Orcamento_{cliente_nome}.pdf">📥 Clique aqui para baixar o PDF</a>'
-
-            st.success("PDF Gerado com sucesso!")
-            st.markdown(href, unsafe_allow_html=True)
-
-        except Exception as e:
-            st.error(f"Erro ao gerar PDF: {e}")
+    # 3. Mostrar o botão de Download Nativo
+    if pdf_bytes:
+        st.download_button(
+            label="📄 Baixar Proposta em PDF",
+            data=pdf_bytes,
+            file_name=f"Orcamento_{cliente_nome}.pdf",
+            mime="application/pdf",
+            type="primary",
+        )
